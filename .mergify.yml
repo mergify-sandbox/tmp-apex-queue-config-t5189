@@ -1,0 +1,111 @@
+shared:
+  NotSpaceportStagedBranch: &NotSpaceportStagedBranch
+    not: head~=^spaceport/staged/
+  RunwayBotAuthor: &RunwayBotAuthor author~=devex-runway(-dev)?\[bot\]
+  RunwayDevTitle: &RunwayDevTitle title~=to (dev|apex-[a-zA-Z0-9-]+-dev-\d{2})
+  NotHeldByTheMergeQueue: &NotHeldByTheMergeQueue label!=queued
+
+merge_queue:
+  mode: isolated
+  queued_label: queued
+  queue_controls_comment: false
+
+queue_rules:
+  - name: default
+    merge_method: squash
+
+merge_protections_settings:
+  auto_merge_conditions:
+    - or:
+        - and:
+            - label=automerge
+            - label!=do-not-merge
+            - label!=stale
+            - "#changes-requested-reviews-by=0"
+            - *NotSpaceportStagedBranch
+        - and:
+            - *RunwayBotAuthor
+            - *RunwayDevTitle
+
+pull_request_rules:
+  - name: delete head branch after merge
+    conditions:
+      - or:
+          - merged
+          - closed
+      - *NotSpaceportStagedBranch
+    actions:
+      delete_head_branch:
+        force: false
+
+  - name: Label PR as Stale
+    conditions:
+      - or:
+          - updated-at<6 days ago
+          - and:
+              - updated-at<1 days ago
+              - or:
+                - label=afs-deploy-bot
+                - label=Runway
+      - not: merged
+      - not: closed
+      - *NotSpaceportStagedBranch
+      - *NotHeldByTheMergeQueue
+      - label!=disable-stale
+    actions:
+      label:
+        add:
+          - stale
+
+  - name: Close Stale PRs
+    conditions:
+      - label=stale
+      - updated-at<1 days ago
+      - not: merged
+      - not: closed
+      - *NotSpaceportStagedBranch
+      - *NotHeldByTheMergeQueue
+    actions:
+      close:
+        message: >
+          This PR was closed due to a stale status.
+
+  - name: Close Runway DEV PR's after a day
+    conditions:
+      - *RunwayBotAuthor
+      - *RunwayDevTitle
+      - updated-at<1 days ago
+      - label!=disable-stale
+      - not: merged
+      - not: closed
+      - *NotHeldByTheMergeQueue
+    actions:
+      close:
+        message: >
+          This Runway dev PR was closed after being inactive for 1 day
+
+  - name: Post Warning Comment on Runway PR's that are inactive for a day
+    conditions:
+      - *RunwayBotAuthor
+      - updated-at<25 hours ago
+      - label!=disable-stale
+      - not: merged
+      - not: closed
+      - *NotHeldByTheMergeQueue
+    actions:
+      comment:
+        message: >
+          This Runway PR has been inactive for more than 1 day. It will be closed in 24 hours. To stop this from happening you can add the `disable-stale` label
+
+  - name: Close Runway non-dev PR's after two days
+    conditions:
+      - *RunwayBotAuthor
+      - updated-at<2 days ago
+      - label!=disable-stale
+      - not: merged
+      - not: closed
+      - *NotHeldByTheMergeQueue
+    actions:
+      close:
+        message: >
+          This Runway PR was closed after being inactive for 2 days
