@@ -1,12 +1,22 @@
 shared:
+  # Written once here, referenced below, so a pattern can never drift between
+  # two rules that are meant to share it.
   NotSpaceportStagedBranch: &NotSpaceportStagedBranch
     not: head~=^spaceport/staged/
   RunwayBotAuthor: &RunwayBotAuthor author~=devex-runway(-dev)?\[bot\]
   RunwayDevTitle: &RunwayDevTitle title~=to (dev|apex-[a-zA-Z0-9-]+-dev-\d{2})
+  # The merge queue labels whatever it is holding, so this reads as "leave this
+  # pull request alone while the queue has it". It keeps the stale and close
+  # rules below from closing a pull request that is simply waiting out a freeze.
   NotHeldByTheMergeQueue: &NotHeldByTheMergeQueue label!=queued
 
 merge_queue:
+  # Every batch is independent and tested against main rather than against the
+  # other pull requests, which suits a repository whose changes touch unrelated
+  # deploy paths.
   mode: isolated
+  # Named explicitly because the stale rules below depend on it: unset it and
+  # they stop being able to tell a queued pull request from an abandoned one.
   queued_label: queued
   queue_controls_comment: false
 
@@ -15,6 +25,9 @@ queue_rules:
     merge_method: squash
 
 merge_protections_settings:
+  # Replaces the two `merge` rules. A pull request matching these is queued
+  # automatically, and leaves the queue again if it stops matching, so removing
+  # the label or requesting changes still calls the merge off.
   auto_merge_conditions:
     - or:
         - and:
