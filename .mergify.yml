@@ -41,15 +41,6 @@ merge_protections_settings:
             - *RunwayDevTitle
 
 pull_request_rules:
-  - name: delete head branch after merge
-    conditions:
-      - or:
-          - merged
-          - closed
-      - *NotSpaceportStagedBranch
-    actions:
-      delete_head_branch:
-        force: false
 
   - name: Label PR as Stale
     conditions:
